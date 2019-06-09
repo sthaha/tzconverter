@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+
 # License: GPL
 # Author: Chmouel Boudjnah <chmouel@chmouel.com>
+
 set -eo pipefail
 declare -A tzone
 
-function help() {
+help() {
     cat <<EOF
 tz allow to calculate different timezone, it allows you to do somethinge like this :
 % tz
@@ -37,27 +39,44 @@ EOF
 }
 
 
-function c() {
-    BOLD='\033[1m'
-    NONE='\033[00m'
-    RED='\033[01;31m'
-
-    case $1 in
-        bold)
-            color=$BOLD
-            ;;
-        normal)
-            color=$NONE
-            ;;
-        red)
-            color=$BOLD$RED
-            ;;
-        *)
-
-    esac
-    printf "%b" "${color}$2${NONE} "
+debug() {
+  ${DEBUG:-false} && echo $@ || true
 }
 
+declare -r RESET='\033[00m'
+declare -A colors=(
+    ["bold"]="1"
+    ["reset"]="$RESET"
+    ["red"]="31"
+    ["green"]="32"
+    ["yellow"]="33"
+  	["blue"]="34"
+  	["magenta"]="35"
+  	["cyan"]="36"
+  	["light-gray"]="37"
+  	["dark-gray"]="90"
+  	["light-red"]="91"
+  	["light-green"]="92"
+  	["light-yellow"]="93"
+  	["light-blue"]="94"
+  	["light-magenta"]="95"
+  	["light-cyan"]="96"
+  	["white"]="97"
+)
+
+c() {
+  local color=""
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      normal) color=$RESET ; break ;;
+      bold)   color="${colors[bold]};$color" ; shift ;;
+      *)
+          [[ "${colors[$1]}" == "" ]]  && break
+          color="${color}${colors[$1]}"; shift ;;
+    esac
+  done
+  echo -e "\e[${color}m$@${RESET}"
+}
 
 if [[ $1 == "-h" || $1 == "--help" ]];then
     help
@@ -69,11 +88,11 @@ fi
 
 ## Change this
 tzone=(
-    ["Bangalore"]="Asia/Calcutta"
-    ["Brisbane"]="Australia/Brisbane"
-    ["Paris"]="Europe/Paris"
-	["Boston"]="America/New_York"
-	["California"]="America/Los_Angeles"
+    ["blr"]="Asia/Calcutta"
+    ["bne"]="Australia/Brisbane"
+    ["paris"]="Europe/Paris"
+	  ["boston"]="America/New_York"
+	  ["california"]="America/Los_Angeles"
 )
 
 # If that fails (old distros used to do a hardlink for /etc/localtime)
@@ -101,13 +120,12 @@ if [[ $1 == "-t" ]];then
         fi
     done
 
-    if (( !done ));then
+    if (( !done )); then
         currenttz=$2
         tzone[$2]=$2
     fi
 
-    shift
-    shift
+    shift 2
 fi
 
 args=($@)
@@ -126,7 +144,6 @@ if [[ ${jsonoutput} ]];then
 {"items": [
 EOF
 fi
-
 
 for i in ${!tzone[@]};do
     # bug in gnu date? 'now' doesn't take in consideration TZ :(
@@ -155,9 +172,9 @@ EOF
             else
                 specified="🏠"
             fi
-            printf "%-20s: %s %s\n" `c bold $i` "$res" $specified
+            printf "%-22s: %s %s\n" `c green $i` "`c light-green $res`" $specified
         else
-            printf "%-20s: %s\n" `c bold $i` "$res"
+            printf "%-22s: %s\n" `c bold $i` "$res"
         fi
     fi
 done
